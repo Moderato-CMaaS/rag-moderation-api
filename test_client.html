@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RAG Moderation API Test Client</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #444;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            height: 100px;
+            resize: vertical;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .response {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            border: 1px solid #ddd;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border-color: #bee5eb;
+            color: #0c5460;
+        }
+        .status-indicator {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status-online {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .status-offline {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .endpoint-section {
+            margin-bottom: 40px;
+        }
+        .api-info {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>RAG Moderation API Test Client</h1>
+        
+        <div class="api-info">
+            <h3>API Status: <span id="apiStatus">Checking...</span></h3>
+            <p><strong>Base URL:</strong> http://127.0.0.1:8000</p>
+            <p><strong>Documentation:</strong> <a href="http://127.0.0.1:8000/docs" target="_blank">Swagger UI</a> | <a href="http://127.0.0.1:8000/redoc" target="_blank">ReDoc</a></p>
+            <p><strong>🔑 Custom API Key System:</strong> Pass your own generated API keys in request bodies to organize different rule sets. Each custom API key maintains isolated rules.</p>
+        </div>
+
+        <!-- API Key Configuration -->
+        <div class="endpoint-section">
+            <h2>🔑 API Configuration</h2>
+            <div class="form-group">
+                <label for="apiKey">API Key (X-API-Key header):</label>
+                <input type="password" id="apiKey" placeholder="Enter your API key" />
+                <small style="color: #666;">Required for add-rule and moderate endpoints</small>
+            </div>
+        </div>
+
+        <div class="grid">
+            <!-- Health Check -->
+            <div class="container endpoint-section">
+                <h2>🏥 Health Check</h2>
+                <p>Test if the API is running</p>
+                <button onclick="checkHealth()">Check API Health</button>
+                <div id="healthResponse" class="response" style="display: none;"></div>
+            </div>
+
+            <!-- Add Rule -->
+            <div class="container endpoint-section">
+                <h2>📝 Add Moderation Rule</h2>
+                <div class="form-group">
+                    <label for="ruleUserId">User ID:</label>
+                    <input type="text" id="ruleUserId" placeholder="e.g., user123" value="test_user" />
+                </div>
+                <div class="form-group">
+                    <label for="ruleApiKey">Custom API Key:</label>
+                    <input type="text" id="ruleApiKey" placeholder="e.g., sdsdusdhusdhsddsisjidjsdjsdj12223" value="my-app-key-001" />
+                    <small style="color: #666;">Your custom identifier for organizing rule sets</small>
+                </div>
+                <div class="form-group">
+                    <label for="ruleId">Rule ID:</label>
+                    <input type="text" id="ruleId" placeholder="e.g., rule_001" value="no_profanity" />
+                </div>
+                <div class="form-group">
+                    <label for="ruleText">Rule Text:</label>
+                    <textarea id="ruleText" placeholder="Describe the moderation rule... (Can be multiple paragraphs)" style="height: 120px;">Do not allow profanity or offensive language. This includes but is not limited to swear words, hate speech, discriminatory language, and content that promotes violence or harassment.</textarea>
+                </div>
+                <button onclick="addRule()">Add Rule</button>
+                <div id="addRuleResponse" class="response" style="display: none;"></div>
+            </div>
+
+            <!-- Manage Rules -->
+            <div class="container endpoint-section">
+                <h2>📋 Manage Rules</h2>
+                <div class="form-group">
+                    <label for="manageUserId">User ID:</label>
+                    <input type="text" id="manageUserId" placeholder="e.g., user123" value="test_user" />
+                </div>
+                <div class="form-group">
+                    <label for="manageApiKey">Custom API Key:</label>
+                    <input type="text" id="manageApiKey" placeholder="e.g., sdsdusdhusdhsddsisjidjsdjsdj12223" value="my-app-key-001" />
+                </div>
+                <button onclick="getUserRules()">List User Rules</button>
+                <button onclick="getApiKeyRules()" style="background-color: #28a745;">List All API Key Rules</button>
+                <button onclick="deleteRule()" style="background-color: #dc3545;">Delete Rule</button>
+                
+                <div class="form-group" style="margin-top: 15px;">
+                    <label for="deleteRuleId">Rule ID to Delete:</label>
+                    <input type="text" id="deleteRuleId" placeholder="e.g., rule_001" />
+                </div>
+                <div id="manageRulesResponse" class="response" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Moderate Text -->
+        <div class="container endpoint-section">
+            <h2>🛡️ Moderate Text</h2>
+            <div class="grid">
+                <div>
+                    <div class="form-group">
+                        <label for="moderateUserId">User ID:</label>
+                        <input type="text" id="moderateUserId" placeholder="e.g., user123" value="test_user" />
+                    </div>
+                    <div class="form-group">
+                        <label for="moderateApiKey">Custom API Key:</label>
+                        <input type="text" id="moderateApiKey" placeholder="e.g., sdsdusdhusdhsddsisjidjsdjsdj12223" value="my-app-key-001" />
+                    </div>
+                    <div class="form-group">
+                        <label for="textToModerate">Text to Moderate:</label>
+                        <textarea id="textToModerate" placeholder="Enter text to check...">This is a test message that should be clean.</textarea>
+                    </div>
+                    <button onclick="moderateText()">Moderate Text</button>
+                </div>
+                <div>
+                    <h3>Test Cases:</h3>
+                    <button onclick="loadTestCase('clean')">Clean Text</button>
+                    <button onclick="loadTestCase('questionable')">Questionable Text</button>
+                    <button onclick="loadTestCase('violation')">Potential Violation</button>
+                </div>
+            </div>
+            <div id="moderateResponse" class="response" style="display: none;"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8000';
+
+        // Test cases
+        const testCases = {
+            clean: "Hello, this is a wonderful day! I hope you're having a great time.",
+            questionable: "This product is terrible and I hate it so much!",
+            violation: "This is offensive content with bad language and inappropriate material."
+        };
+
+        function getApiKey() {
+            return document.getElementById('apiKey').value;
+        }
+
+        function getHeaders(includeApiKey = false) {
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            if (includeApiKey) {
+                const apiKey = getApiKey();
+                if (apiKey) {
+                    headers['X-API-Key'] = apiKey;
+                }
+            }
+            
+            return headers;
+        }
+
+        function showResponse(elementId, data, isSuccess = true) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = `response ${isSuccess ? 'success' : 'error'}`;
+            element.textContent = JSON.stringify(data, null, 2);
+        }
+
+        function showError(elementId, error) {
+            const element = document.getElementById(elementId);
+            element.style.display = 'block';
+            element.className = 'response error';
+            element.textContent = `Error: ${error.message || error}`;
+        }
+
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/`, {
+                    method: 'GET',
+                    headers: getHeaders(false)
+                });
+                
+                const data = await response.json();
+                showResponse('healthResponse', {
+                    status: response.status,
+                    data: data
+                }, response.ok);
+                
+                // Update API status indicator
+                updateApiStatus(response.ok);
+                
+            } catch (error) {
+                showError('healthResponse', error);
+                updateApiStatus(false);
+            }
+        }
+
+        async function addRule() {
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                alert('Please enter an API key first');
+                return;
+            }
+
+            const ruleData = {
+                user_id: document.getElementById('ruleUserId').value,
+                rule_id: document.getElementById('ruleId').value,
+                rule_text: document.getElementById('ruleText').value,
+                api_key: document.getElementById('ruleApiKey').value
+            };
+
+            if (!ruleData.user_id || !ruleData.rule_id || !ruleData.rule_text || !ruleData.api_key) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/add-rule/`, {
+                    method: 'POST',
+                    headers: getHeaders(true),
+                    body: JSON.stringify(ruleData)
+                });
+                
+                const data = await response.json();
+                showResponse('addRuleResponse', {
+                    status: response.status,
+                    data: data
+                }, response.ok);
+                
+            } catch (error) {
+                showError('addRuleResponse', error);
+            }
+        }
+
+        async function moderateText() {
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                alert('Please enter an API key first');
+                return;
+            }
+
+            const moderationData = {
+                user_id: document.getElementById('moderateUserId').value,
+                text_to_moderate: document.getElementById('textToModerate').value,
+                api_key: document.getElementById('moderateApiKey').value
+            };
+
+            if (!moderationData.user_id || !moderationData.text_to_moderate || !moderationData.api_key) {
+                alert('Please fill in all fields');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/moderate/`, {
+                    method: 'POST',
+                    headers: getHeaders(true),
+                    body: JSON.stringify(moderationData)
+                });
+                
+                const data = await response.json();
+                showResponse('moderateResponse', {
+                    status: response.status,
+                    data: data
+                }, response.ok);
+                
+            } catch (error) {
+                showError('moderateResponse', error);
+            }
+        }
+
+        function loadTestCase(type) {
+            if (testCases[type]) {
+                document.getElementById('textToModerate').value = testCases[type];
+            }
+        }
+
+        async function getUserRules() {
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                alert('Please enter an API key first');
+                return;
+            }
+
+            const userId = document.getElementById('manageUserId').value;
+            const customApiKey = document.getElementById('manageApiKey').value;
+            
+            if (!userId || !customApiKey) {
+                alert('Please enter both user ID and custom API key');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/rules/${userId}/${customApiKey}/`, {
+                    method: 'GET',
+                    headers: getHeaders(true)
+                });
+                
+                const data = await response.json();
+                showResponse('manageRulesResponse', {
+                    status: response.status,
+                    data: data
+                }, response.ok);
+                
+            } catch (error) {
+                showError('manageRulesResponse', error);
+            }
+        }
+
+        async function getApiKeyRules() {
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                alert('Please enter an API key first');
+                return;
+            }
+
+            const customApiKey = document.getElementById('manageApiKey').value;
+            if (!customApiKey) {
+                alert('Please enter a custom API key');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/api-rules/${customApiKey}/`, {
+                    method: 'GET',
+                    headers: getHeaders(true)
+                });
+                
+                const data = await response.json();
+                showResponse('manageRulesResponse', {
+                    status: response.status,
+                    data: data,
+                    note: "These are ALL rules for this custom API key across all users"
+                }, response.ok);
+                
+            } catch (error) {
+                showError('manageRulesResponse', error);
+            }
+        }
+
+        async function deleteRule() {
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                alert('Please enter an API key first');
+                return;
+            }
+
+            const userId = document.getElementById('manageUserId').value;
+            const customApiKey = document.getElementById('manageApiKey').value;
+            const ruleId = document.getElementById('deleteRuleId').value;
+            
+            if (!userId || !ruleId || !customApiKey) {
+                alert('Please enter user ID, custom API key, and rule ID');
+                return;
+            }
+
+            if (!confirm(`Are you sure you want to delete rule "${ruleId}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/delete-rule/${ruleId}/?user_id=${userId}&api_key=${customApiKey}`, {
+                    method: 'DELETE',
+                    headers: getHeaders(true)
+                });
+                
+                const data = await response.json();
+                showResponse('manageRulesResponse', {
+                    status: response.status,
+                    data: data
+                }, response.ok);
+                
+                // Clear the rule ID field if deletion was successful
+                if (response.ok) {
+                    document.getElementById('deleteRuleId').value = '';
+                }
+                
+            } catch (error) {
+                showError('manageRulesResponse', error);
+            }
+        }
+
+        function updateApiStatus(isOnline) {
+            const statusElement = document.getElementById('apiStatus');
+            if (isOnline) {
+                statusElement.innerHTML = 'Online <span class="status-indicator status-online">✓ Active</span>';
+            } else {
+                statusElement.innerHTML = 'Offline <span class="status-indicator status-offline">✗ Inactive</span>';
+            }
+        }
+
+        // Check API health on page load
+        window.addEventListener('load', function() {
+            checkHealth();
+        });
+    </script>
+</body>
+</html>
